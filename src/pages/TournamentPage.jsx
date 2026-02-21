@@ -1,5 +1,5 @@
 import confetti from 'canvas-confetti'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { FictionsApi, TournamentsApi } from '../api'
 
@@ -88,11 +88,14 @@ export default function TournamentPage() {
   const [error, setError] = useState('')
   const championFired = useRef(false)
 
+  const [result, setResult] = useState(null)
+
   const loadTournament = async () => {
     try {
       const data = await TournamentsApi.get(id)
       setTournament(data.tournament)
       setMatches(data.matches)
+      setResult(data.result || null)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -109,6 +112,23 @@ export default function TournamentPage() {
   const isCompleted = tournament?.status === 'completed'
   const finalMatch = matches.find((m) => m.round === 5)
   const winnerSlug = isCompleted && finalMatch ? (finalMatch.winner_slug ?? finalMatch.winnerSlug) : null
+
+  const fallbackResult = useMemo(() => {
+    if (result || !isCompleted || !finalMatch) return null
+    const r3 = matches.filter((m) => (m.round ?? m.Round) >= 3)
+    const seen = new Set()
+    const top8 = []
+    const w = winnerSlug ?? finalMatch?.winner_slug ?? finalMatch?.winnerSlug
+    if (w) top8.push(w)
+    for (const m of r3) {
+      const c1 = m.contestant1_slug ?? m.contestant1Slug
+      const c2 = m.contestant2_slug ?? m.contestant2Slug
+      for (const s of [c1, c2]) if (s && !seen.has(s)) { seen.add(s); if (s !== w) top8.push(s) }
+    }
+    return { user_name: tournament?.user?.name, winner: w, top8 }
+  }, [result, isCompleted, matches, finalMatch, winnerSlug, tournament?.user?.name])
+
+  const displayResult = result || fallbackResult
 
   useEffect(() => {
     if (isCompleted && winnerSlug && !championFired.current) {
@@ -144,6 +164,7 @@ export default function TournamentPage() {
       const data = await TournamentsApi.vote(id, currentMatch.id, winnerSlug)
       setTournament(data.tournament)
       setMatches(data.matches)
+      if (data.result) setResult(data.result)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -165,17 +186,32 @@ export default function TournamentPage() {
 
       {error && <p className="error">{error}</p>}
 
-      {isCompleted && winnerSlug ? (
+      {isCompleted && (winnerSlug || displayResult) ? (
         <section className="result-card">
-          <h2>Победитель</h2>
+          {displayResult?.user_name && (
+            <p className="result-user">Турнир: {displayResult.user_name}</p>
+          )}
+          <h2>1 место — Победитель</h2>
           <p className="champion-text">Твоя любимая фантастика — это</p>
           <div className="champion">
             <FictionCard
-              fiction={fictionBySlug(fictions, winnerSlug)}
+              fiction={fictionBySlug(fictions, displayResult?.winner ?? winnerSlug)}
               onClick={() => {}}
               disabled
             />
           </div>
+          {displayResult?.top8 && displayResult.top8.length > 0 && (
+            <div className="top8-section">
+              <h3>Топ-8 (раунды 3–5)</h3>
+              <ul className="top8-list">
+                {displayResult.top8.map((slug) => (
+                  <li key={slug} className={slug === (displayResult.winner ?? winnerSlug) ? 'top8-item top8-item--winner' : 'top8-item'}>
+                    {fictionBySlug(fictions, slug).name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       ) : currentMatch ? (
         <section className="match-card">

@@ -171,6 +171,42 @@
   border-color: var(--accent);
 }
 
+.result-card .result-user {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.result-card .top8-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+
+.result-card .top8-section h3 {
+  color: var(--accent);
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.result-card .top8-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.result-card .top8-item {
+  padding: 0.4rem 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+}
+
+.result-card .top8-item--winner {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .back-link {
   text-decoration: none;
 }
